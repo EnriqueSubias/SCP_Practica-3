@@ -1,3 +1,11 @@
+/* ---------------------------------------------------------------
+Práctica 3.
+Código fuente: MyQueue.h
+Grau Informàtica
+X5707036T Robert Dragos Trif Apoltan
+49271860T Enrique Alejo Subías Melgar
+--------------------------------------------------------------- */
+
 #ifndef MYQUEU_H_
 #define MYQUEU_H_
 

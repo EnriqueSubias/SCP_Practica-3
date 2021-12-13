@@ -1,3 +1,11 @@
+/* ---------------------------------------------------------------
+Práctica 3.
+Código fuente: WordCount.cpp
+Grau Informàtica
+X5707036T Robert Dragos Trif Apoltan
+49271860T Enrique Alejo Subías Melgar
+--------------------------------------------------------------- */
+
 #include "Types.h"
 #include "MapReduce.h"
 
@@ -7,6 +15,7 @@
 #include <stdlib.h>
 
 using namespace std;
+
 
 TError MapWordCount(PtrMap, TMapInputTuple tuple);
 TError ReduceWordCount(PtrReduce, TReduceInputKey key, TReduceInputIterator begin, TReduceInputIterator end);
@@ -68,11 +77,10 @@ TError MapWordCount(PtrMap map, TMapInputTuple tuple)
 	stringstream ss;
 	string temp;
 	ss.str(value);
-
 	// Emit map result (word,'1').
 	while (ss >> temp)
 		map->EmitResult(temp, 1);
-
+		
 	return (COk);
 }
 

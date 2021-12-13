@@ -1,3 +1,11 @@
+/* ---------------------------------------------------------------
+Práctica 3.
+Código fuente: Map.h
+Grau Informàtica
+X5707036T Robert Dragos Trif Apoltan
+49271860T Enrique Alejo Subías Melgar
+--------------------------------------------------------------- */
+
 #ifndef MAP_H_
 #define MAP_H_
 
@@ -42,12 +50,12 @@ public:
 
 	inline multimap<TMapOutputKey, TMapOutputValue> getOutput() { return (Output); };
 
-	TError ReadFileTuples(char *file); //, int start_line, int end_line);
-	TError Run();
+	TError ReadFileTuples(char *file, struct statistics_split *est_split); //, int start_line, int end_line);
+	TError Run(struct statistics_map *est_map);
 	void EmitResult(TMapOutputKey key, TMapOutputValue value);
 
 private:
-	void AddInput(PtrMapInputTuple tuple);
+	void AddInput(PtrMapInputTuple tuple, struct statistics_split *est_split);
 };
 typedef class Map TMap, *PtrMap;
 

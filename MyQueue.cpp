@@ -1,3 +1,11 @@
+/* ---------------------------------------------------------------
+Práctica 3.
+Código fuente: MyQueue.cpp
+Grau Informàtica
+X5707036T Robert Dragos Trif Apoltan
+49271860T Enrique Alejo Subías Melgar
+--------------------------------------------------------------- */
+
 //#include "MyQueue.h"
 
 //#include <queue>

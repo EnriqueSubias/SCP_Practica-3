@@ -1,3 +1,11 @@
+/* ---------------------------------------------------------------
+Práctica 3.
+Código fuente: Reduce.h
+Grau Informàtica
+X5707036T Robert Dragos Trif Apoltan
+49271860T Enrique Alejo Subías Melgar
+--------------------------------------------------------------- */
+
 #ifndef REDUCE_H_
 #define REDUCE_H_
 

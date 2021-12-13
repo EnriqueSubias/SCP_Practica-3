@@ -1,3 +1,11 @@
+/* ---------------------------------------------------------------
+Práctica 3.
+Código fuente: MapReduce.cpp
+Grau Informàtica
+X5707036T Robert Dragos Trif Apoltan
+49271860T Enrique Alejo Subías Melgar
+--------------------------------------------------------------- */
+
 #include "MapReduce.h"
 #include "Types.h"
 #include <stdio.h>
@@ -11,14 +19,7 @@ int getNamesFiles(char *names[], char *input);
 void Fases_Concurentes_1(struct thread_data_1 *data_1);
 void Fases_Concurentes_2(struct thread_data_2 *data_2);
 
-struct thread_data_1
-{
-	char input_folder[256];
-	char input_path[256];
-	//int start_line, end_line;
-	MapReduce *myObject;
-	PtrMap map;
-};
+
 
 struct thread_data_2
 {
@@ -26,7 +27,50 @@ struct thread_data_2
 	MapReduce *myObject;
 };
 
+struct statistics_split
+{
+	int numFilesReaded;
+	int bytesReaded;
+	int numLinesReaded;
+	int numTuplesGenerated;
+};
+
+struct statistics_map
+{
+	int numInputTuples;
+	int bytesProcessed;
+	int numOutputTuples;
+};
+
+struct statistics_suffle
+{
+	int numOutputTuples;
+	int numKeysGenerated;
+};
+
+struct statistics_reduce
+{
+	int numKeysProcesed;
+	int numOcurences;
+	int numBytesWrite;
+};
+
+struct thread_data_1
+{
+	char input_folder[256];
+	char input_path[256];
+	//int start_line, end_line;
+	MapReduce *myObject;
+	PtrMap map;
+	struct statistics_split *est_split;
+	struct statistics_map *est_map;
+};
+int numficheros=0;
+int numBytes=0;
+
 pthread_mutex_t mutex1;
+pthread_mutex_t mutexFicheros;
+pthread_mutex_t mutexNumBytes;
 
 // Constructor MapReduce: directorio/fichero entrada, directorio salida, función Map, función reduce y número de reducers a utilizar.
 MapReduce::MapReduce(char *input, char *output, TMapFunction mapf, TReduceFunction reducef, int nreducers)
@@ -90,6 +134,8 @@ MapReduce::Run(int nreducers)
 		data_1[i].map = new TMap(MapFunction);
 		strcpy(data_1[i].input_folder, InputPath);
 		data_1[i].myObject = this;
+		data_1[i].est_split= (statistics_split *)malloc(sizeof(statistics_split[1]));
+		data_1[i].est_map = (statistics_map *)malloc(sizeof(statistics_map[1]));
 		printf("Input path %s: \n", data_1[i].input_path);
 	}
 
@@ -114,25 +160,27 @@ MapReduce::Run(int nreducers)
 		pthread_join(thread_ids_1[i], (void **)NULL);
 	}
 
-	// Segundos threads
-	printf("\n\x1B[32mProcesando Fase 2 con %d threads...\033[0m\n", nreducers);
-	for (int i = 0; i < nreducers; i++)
-	{
-		if (debug)
-			printf("> Thread %d creado Fase 2 \n", i);
+	printf("NumTotalBytes: %i", numBytes);
 
-		int s = pthread_create(&thread_ids_2[i], NULL, (void *(*)(void *))Fases_Concurentes_2, (void *)&data_2[i]);
-		if (s != 0)
-		{
-			error("Run::Concurent 2 - Error Create Thread");
-		}
-	}
-	for (int i = 0; i < nreducers; i++)
-	{
-		if (debug)
-			printf("> Thread %d join Fase 2\n", i);
-		pthread_join(thread_ids_2[i], (void **)NULL);
-	}
+	// // Segundos threads
+	// printf("\n\x1B[32mProcesando Fase 2 con %d threads...\033[0m\n", nreducers);
+	// for (int i = 0; i < nreducers; i++)
+	// {
+	// 	if (debug)
+	// 		printf("> Thread %d creado Fase 2 \n", i);
+
+	// 	int s = pthread_create(&thread_ids_2[i], NULL, (void *(*)(void *))Fases_Concurentes_2, (void *)&data_2[i]);
+	// 	if (s != 0)
+	// 	{
+	// 		error("Run::Concurent 2 - Error Create Thread");
+	// 	}
+	// }
+	// for (int i = 0; i < nreducers; i++)
+	// {
+	// 	if (debug)
+	// 		printf("> Thread %d join Fase 2\n", i);
+	// 	pthread_join(thread_ids_2[i], (void **)NULL);
+	// }
 
 	return (COk);
 }
@@ -150,15 +198,21 @@ void Fases_Concurentes_1(struct thread_data_1 *data_1)
 
 	if (data_1->myObject->Split(full_path, data_1) == COk)
 	{
+		pthread_mutex_lock(&mutexNumBytes);
+		numBytes = numBytes + data_1->est_split->bytesReaded;
+		pthread_mutex_unlock(&mutexNumBytes);
+		printf("Thread: %ld ConArchivo: %s NunLineas leidas: %i NumeroDe Tuplas: %i NumeroDe Bytes: %i\n", pthread_self(), data_1->input_path, data_1->est_split->numLinesReaded, data_1->est_split->numTuplesGenerated, data_1->est_split->bytesReaded);
+		
 		if (data_1->myObject->Map(data_1) == COk)
 		{
-			if (data_1->myObject->Suffle(data_1) == COk)
-			{
-			}
-			else
-			{
-				error("MapReduce::Concurent 1 - Error Shuffle");
-			}
+			printf("Thread: %ld ConArchivo: %s NunInput Tuples: %i NumeroOutput Tuplas: %i NumeroDe Bytes: %i\n", pthread_self(), data_1->input_path, data_1->est_map->numInputTuples, data_1->est_map->numOutputTuples, data_1->est_map->bytesProcessed);
+			// if (data_1->myObject->Suffle(data_1) == COk)
+			// {
+			// }
+			// else
+			// {
+			// 	error("MapReduce::Concurent 1 - Error Shuffle");
+			// }
 		}
 		else
 		{
@@ -232,7 +286,7 @@ TError
 MapReduce::Split(char *input, struct thread_data_1 *data_1)
 {
 	printf("Split: thread %ld\n", pthread_self());
-	if (data_1->map->ReadFileTuples(input) != COk)
+	if (data_1->map->ReadFileTuples(input, data_1->est_split) != COk)
 	{
 		error("MapReduce::Split Run error.\n");
 	}
@@ -246,7 +300,7 @@ MapReduce::Map(struct thread_data_1 *data_1)
 	printf("Map: thread %ld\n", pthread_self());
 	if (debug)
 		printf("DEBUG::Running Map by thread number %ld\n", pthread_self());
-	if (data_1->map->Run() != COk)
+	if (data_1->map->Run(data_1->est_map) != COk)
 	{
 		error("MapReduce::Map Run error.\n");
 	}
