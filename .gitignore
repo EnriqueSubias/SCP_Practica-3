@@ -34,7 +34,7 @@
 *.out
 *.app
 
-*.txt
+# *.txt
 *.r1
 *.r2
 *.r3
@@ -56,4 +56,4 @@
 *.r19
 *.r20
 *.r21
-Secuencial_WordCount/WordCount
+WordCount
