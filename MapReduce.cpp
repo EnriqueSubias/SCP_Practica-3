@@ -68,6 +68,7 @@ struct thread_data_1
 int numficheros=0;
 int numBytes=0;
 
+pthread_barrier_t  barrier;
 pthread_mutex_t mutex1;
 pthread_mutex_t mutexFicheros;
 pthread_mutex_t mutexNumBytes;
@@ -138,7 +139,7 @@ MapReduce::Run(int nreducers)
 		data_1[i].est_map = (statistics_map *)malloc(sizeof(statistics_map[1]));
 		printf("Input path %s: \n", data_1[i].input_path);
 	}
-
+	pthread_barrier_init (&barrier, NULL, nfiles);
 	// Primeros threads
 	printf("\n\x1B[32mProcesando Fase 1 con %d threads...\033[0m\n", nfiles);
 	for (int i = 0; i < nfiles; i++)
@@ -202,7 +203,7 @@ void Fases_Concurentes_1(struct thread_data_1 *data_1)
 		numBytes = numBytes + data_1->est_split->bytesReaded;
 		pthread_mutex_unlock(&mutexNumBytes);
 		printf(" -> Thread: %ld ConArchivo: %s NunLineas leidas: %i NumeroDe Tuplas: %i NumeroDe Bytes: %i\n", pthread_self(), data_1->input_path, data_1->est_split->numLinesReaded, data_1->est_split->numTuplesGenerated, data_1->est_split->bytesReaded);
-		
+		pthread_barrier_wait (&barrier);
 		if (data_1->myObject->Map(data_1) == COk)
 		{
 			printf(" -- > Thread: %ld ConArchivo: %s NumInput Tuples: %i NumOutput Tuplas: %i NumDe Bytes: %i\n", pthread_self(), data_1->input_path, data_1->est_split->numLinesReaded, data_1->est_map->numOutputTuples, data_1->est_map->bytesProcessed);
