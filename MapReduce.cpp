@@ -201,11 +201,11 @@ void Fases_Concurentes_1(struct thread_data_1 *data_1)
 		pthread_mutex_lock(&mutexNumBytes);
 		numBytes = numBytes + data_1->est_split->bytesReaded;
 		pthread_mutex_unlock(&mutexNumBytes);
-		printf("Thread: %ld ConArchivo: %s NunLineas leidas: %i NumeroDe Tuplas: %i NumeroDe Bytes: %i\n", pthread_self(), data_1->input_path, data_1->est_split->numLinesReaded, data_1->est_split->numTuplesGenerated, data_1->est_split->bytesReaded);
+		printf(" -> Thread: %ld ConArchivo: %s NunLineas leidas: %i NumeroDe Tuplas: %i NumeroDe Bytes: %i\n", pthread_self(), data_1->input_path, data_1->est_split->numLinesReaded, data_1->est_split->numTuplesGenerated, data_1->est_split->bytesReaded);
 		
 		if (data_1->myObject->Map(data_1) == COk)
 		{
-			printf("Thread: %ld ConArchivo: %s NunInput Tuples: %i NumeroOutput Tuplas: %i NumeroDe Bytes: %i\n", pthread_self(), data_1->input_path, data_1->est_map->numInputTuples, data_1->est_map->numOutputTuples, data_1->est_map->bytesProcessed);
+			printf(" -- > Thread: %ld ConArchivo: %s NumInput Tuples: %i NumOutput Tuplas: %i NumDe Bytes: %i\n", pthread_self(), data_1->input_path, data_1->est_split->numLinesReaded, data_1->est_map->numOutputTuples, data_1->est_map->bytesProcessed);
 			// if (data_1->myObject->Suffle(data_1) == COk)
 			// {
 			// }

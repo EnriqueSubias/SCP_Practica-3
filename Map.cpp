@@ -27,7 +27,7 @@ struct statistics_map
 	int numOutputTuples;
 };
 int outputTuplesCount = 0;
-
+int NumBytesTuples = 0;
 // Lee fichero de entrada (split) línea a línea y lo guarda en una cola del Map en forma de
 // tuplas (key,value).
 TError
@@ -130,6 +130,7 @@ Map::Run(struct statistics_map *est_map)
 		Input.pop();
 	}
 	est_map->numOutputTuples = outputTuplesCount;
+	est_map->bytesProcessed = NumBytesTuples;
 	return (COk);
 }
 
@@ -140,5 +141,6 @@ void Map::EmitResult(TMapOutputKey key, TMapOutputValue value)
 		printf("%ld DEBUG::Map emit result %s -> %d\n", pthread_self(), key.c_str(), value);
 	Output.insert(TMapOuptTuple(key, value));
 	outputTuplesCount = outputTuplesCount + 1;
+	NumBytesTuples = NumBytesTuples + key.length();
 	//est_map->bytesProcessed = est_map->bytesProcessed + value.lenght();
 }
