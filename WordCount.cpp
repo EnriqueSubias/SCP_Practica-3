@@ -16,7 +16,6 @@ X5707036T Robert Dragos Trif Apoltan
 
 using namespace std;
 
-
 TError MapWordCount(PtrMap, TMapInputTuple tuple);
 TError ReduceWordCount(PtrReduce, TReduceInputKey key, TReduceInputIterator begin, TReduceInputIterator end);
 
@@ -38,7 +37,7 @@ int main(int argc, char *argv[])
 		num_reducers = atoi(argv[3]);
 		printf("\x1B[32m-> Reducers number: %d\033[0m\n", num_reducers);
 	}
-	else //if (argc < 3 || argc > 4)
+	else // if (argc < 3 || argc > 4)
 	{
 		error("Error in arguments: WordCount <input dir> <ouput dir> [num_reducers].\n");
 	}
@@ -80,7 +79,7 @@ TError MapWordCount(PtrMap map, TMapInputTuple tuple)
 	// Emit map result (word,'1').
 	while (ss >> temp)
 		map->EmitResult(temp, 1);
-		
+
 	return (COk);
 }
 

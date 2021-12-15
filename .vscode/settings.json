@@ -3,6 +3,12 @@
         "__mutex_base": "cpp",
         "mutex": "cpp",
         "version": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "fstream": "cpp",
+        "array": "cpp",
+        "string_view": "cpp",
+        "memory": "cpp",
+        "istream": "cpp",
+        "functional": "cpp"
     }
 }

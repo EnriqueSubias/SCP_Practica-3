@@ -50,12 +50,20 @@ public:
 
 	inline multimap<TMapOutputKey, TMapOutputValue> getOutput() { return (Output); };
 
-	TError ReadFileTuples(char *file, struct statistics_split *est_split); //, int start_line, int end_line);
-	TError Run(struct statistics_map *est_map);
+	TError ReadFileTuples(char *file); //, int start_line, int end_line);
+	TError Run();
 	void EmitResult(TMapOutputKey key, TMapOutputValue value);
 
+	int GetSplit_bytesReaded();
+	int GetSplit_numLinesReaded();
+	int GetSplit_numTuples();
+
+	int GetMap_numInputTuples();
+	int GetMap_bytesProcessed();
+	int GetMap_numOutputTuples();
+
 private:
-	void AddInput(PtrMapInputTuple tuple, struct statistics_split *est_split);
+	void AddInput(PtrMapInputTuple tuple);
 };
 typedef class Map TMap, *PtrMap;
 

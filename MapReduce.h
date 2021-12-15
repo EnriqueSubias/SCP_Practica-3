@@ -14,6 +14,8 @@ X5707036T Robert Dragos Trif Apoltan
 #include <stdio.h>
 #include <functional>
 #include <string>
+#include <stack>
+using namespace std;
 
 class MapReduce
 {
@@ -25,17 +27,23 @@ class MapReduce
 	vector<PtrMap> Mappers;
 	vector<PtrReduce> Reducers;
 
+	stack<PtrMap> stackMaps;
+
 public:
 	MapReduce(char *input, char *output, TMapFunction map, TReduceFunction reduce, int nreducers);
-	TError Run(int nreducers);
+	TError Run(int nreducers2);
 
 	TError Split(char *input, struct thread_data_1 *data_1);
 	TError Map(struct thread_data_1 *data_1);
 	TError Suffle(struct thread_data_1 *data_1);
-	TError Reduce(struct thread_data_2 *data_2);
+	TError Reduce(struct thread_data_1 *data_1);
 
 	inline void AddMap(PtrMap map) { Mappers.push_back(map); };
 	inline void AddReduce(PtrReduce reducer) { Reducers.push_back(reducer); };
+
+	inline void AddStackMap(PtrMap map) { stackMaps.push(map); };
+	// inline PtrMap PopStackMap(PtrMap map) { stackMaps.pop(); };
+	// inline void TopStackMap(PtrMap map) { stackMaps.top(); };
 };
 typedef class MapReduce TMapReduce, *PtrMapReduce;
 
