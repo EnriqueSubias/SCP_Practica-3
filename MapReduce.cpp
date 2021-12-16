@@ -302,9 +302,9 @@ void Fases_Concurentes_1(struct thread_data_1 *data_1)
 		// printf("\x1B[33m %ld Solo threads Suffle Reducer: %i \033[0m\n", pthread_self(), numReducers);
 
 		// **** Suffle *****
-		data_1->myObject->Suffle(data_1);
-		// if (data_1->myObject->Suffle(data_1)) != COk)
-		//	error("MapReduce::Concurent 1 - Error Shuffle");
+		//data_1->myObject->Suffle(data_1);
+		if (data_1->myObject->Suffle(data_1) != COk)
+			error("MapReduce::Concurent 1 - Error Shuffle");
 		pthread_barrier_wait(&EndSuffle);
 		if (printSuffle == true)
 		{
@@ -320,10 +320,13 @@ void Fases_Concurentes_1(struct thread_data_1 *data_1)
 				printf("Suffle1  ->  \tnumOutputTuples:%i  \tnumProcessedKeys:%i \n",
 					   data_1->myObject->Reducers[m]->GetSuffle_numOutputTuples(), data_1->myObject->Reducers[m]->GetSuffle_numKeys());
 			}
+			printf("\x1B[33m*** Total Suffle  ->  :\033[0m\n");
 		}
-
+		
 		// **** Reduce ****
-		data_1->myObject->Reduce(data_1);
+		//data_1->myObject->Reduce(data_1);
+		if (data_1->myObject->Reduce(data_1) != COk)
+			error("MapReduce::Concurent 1 - Error Reduce");
 		pthread_barrier_wait(&EndReducer);
 		if (printReduce == true)
 		{
@@ -331,8 +334,7 @@ void Fases_Concurentes_1(struct thread_data_1 *data_1)
 			printf("\x1B[33m*** Total Reduce  ->  \tnumKeys:%i   \tnumOccurences:%i  \taverageOccurencesPerKey:%i  \tnumOutputBytes %i \033[0m\n",
 				   TotalReduce_NumKeys, TotalReduce_NumOcur, TotalReduce_AvgOcur, TotalReduce_NumOutBytes);
 		}
-		// if (data_1->myObject->Reduce(data_1)) != COk)
-		//	error("MapReduce::Concurent 1 - Error Reduce");
+		
 	}
 	// pthread_mutex_unlock(&mutexStatistics);
 }
