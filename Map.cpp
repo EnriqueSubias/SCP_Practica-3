@@ -38,7 +38,6 @@ int map_numInputTuples = 0;	 // Numero de tuplas de entrada procesadas
 int map_bytesProcessed = 0;	 // Numero de bytes procesados
 int map_numOutputTuples = 0; // Numero de tuplas de salida generadas
 
-
 // Lee fichero de entrada (split) línea a línea y lo guarda en una cola del Map en forma de
 // tuplas (key,value).
 TError

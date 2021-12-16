@@ -130,5 +130,3 @@ int Reduce::GetReduce_numOutputBytes()
 {
 	return reduce_numOutputBytes;
 }
-
-

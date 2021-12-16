@@ -26,7 +26,6 @@ class MapReduce
 	TReduceFunction ReduceFunction;
 
 	vector<PtrMap> Mappers;
-	
 
 	stack<PtrMap> stackMaps;
 

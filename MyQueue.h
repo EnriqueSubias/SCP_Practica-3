@@ -41,21 +41,21 @@ public:
 	auto end(Container &cont) -> decltype(cont.end());
 	inline T &front()
 	{
-		//pthread_rwlock_rdlock(&rwlock);
+		// pthread_rwlock_rdlock(&rwlock);
 		return (Queue.front());
-		//pthread_rwlock_unlock(&rwlock);
+		// pthread_rwlock_unlock(&rwlock);
 	};
 	inline bool empty()
 	{
-		//pthread_rwlock_rdlock(&rwlock);
+		// pthread_rwlock_rdlock(&rwlock);
 		return (Queue.empty());
-		//pthread_rwlock_unlock(&rwlock);
+		// pthread_rwlock_unlock(&rwlock);
 	};
 };
 
 template <typename T>
 using TMyQueue = typename MyQueue<T>::MyQueue;
-//using TMyQueue = typename MyQueue<T>;
+// using TMyQueue = typename MyQueue<T>;
 
 #include "MyQueue.cpp"
 

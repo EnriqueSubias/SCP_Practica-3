@@ -299,7 +299,7 @@ void Fases_Concurentes_1(struct thread_data_1 *data_1)
 	if (numReducers < nreducers)
 	{
 		numReducers += 1;
-		printf("\x1B[33m %ld Solo threads Suffle Reducer: %i \033[0m\n", pthread_self(), numReducers);
+		// printf("\x1B[33m %ld Solo threads Suffle Reducer: %i \033[0m\n", pthread_self(), numReducers);
 
 		// **** Suffle *****
 		data_1->myObject->Suffle(data_1);
@@ -352,7 +352,7 @@ MapReduce::Reduce(struct thread_data_1 *data_1)
 			data_1->myObject->Reducers.pop_back();
 			pthread_mutex_unlock(&Reduce_part);
 			reductor->Run();
-			
+
 			// Suffle Statistics (TODO: Poner en una funcion a parte)
 			printf("Suffle2  ->  Thread:%ld   \tnumOutputTuples:%i  \tnumProcessedKeys:%i \n",
 				   pthread_self(), reductor->GetSuffle_numOutputTuples(), reductor->GetSuffle_numKeys());
@@ -404,9 +404,9 @@ MapReduce::Suffle(struct thread_data_1 *data_1)
 			count_suffle++;
 			pthread_mutex_lock(&Suffle_part);
 			multimap<string, int> output = Mappers.back()->getOutput();
-			printf("Mappers size: %li\n", Mappers.size());
+			// printf("Mappers size: %li\n", Mappers.size());
 			Mappers.pop_back();
-			printf("Pop %ld\n", pthread_self());
+			// printf("Pop %ld\n", pthread_self());
 			pthread_mutex_unlock(&Suffle_part);
 
 			for (TMapOuputIterator it1 = output.begin(); it1 != output.end(); it1 = it2)
