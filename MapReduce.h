@@ -15,6 +15,7 @@ X5707036T Robert Dragos Trif Apoltan
 #include <functional>
 #include <string>
 #include <stack>
+#include "MyQueue.h"
 using namespace std;
 
 class MapReduce
@@ -25,14 +26,14 @@ class MapReduce
 	TReduceFunction ReduceFunction;
 
 	vector<PtrMap> Mappers;
-	vector<PtrReduce> Reducers;
+	
 
 	stack<PtrMap> stackMaps;
 
 public:
 	MapReduce(char *input, char *output, TMapFunction map, TReduceFunction reduce, int nreducers);
 	TError Run(int nreducers2);
-
+	vector<PtrReduce> Reducers;
 	TError Split(char *input, struct thread_data_1 *data_1);
 	TError Map(struct thread_data_1 *data_1);
 	TError Suffle(struct thread_data_1 *data_1);

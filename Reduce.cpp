@@ -14,10 +14,21 @@ X5707036T Robert Dragos Trif Apoltan
 // Constructor para una tarea Reduce, se le pasa la función que reducción que tiene que
 // ejecutar para cada tupla de entrada y el nombre del fichero de salida en donde generará
 // los resultados.
+
+// Suffle  Statiscis
+int suffle_numOutputTuples = 0; // Numero de tuplas de salida procesadas
+int suffle_numKeys = 0;			// Numero de claves procesadas
+
+// Reduce Statiscis
+int reduce_numKeys = 0;			// Numero de claves diferentes procesadas
+int reduce_numOccurences = 0;	// Numero de ocurrencias procesadas
+int reduce_averageOccurKey = 0; // Valor medio ocurrencias/clave
+int reduce_numOutputBytes = 0;	// Numero bytes escritos de salida
+
 Reduce::Reduce(TReduceFunction reduceFunction, string OutputPath)
 {
 	ReduceFunction = reduceFunction;
-	//if (debug)
+	// if (debug)
 	printf("DEBUG::Creating output file %s\n", OutputPath.c_str());
 
 	OutputFile.open(OutputPath, std::ofstream::out | std::ofstream::trunc);
@@ -36,7 +47,7 @@ Reduce::~Reduce()
 void Reduce::AddInputKeys(TMapOuputIterator begin, TMapOuputIterator end)
 {
 	TMapOuputIterator it;
-
+	suffle_numKeys++;
 	for (it = begin; it != end; it++)
 	{
 		AddInput(it->first, it->second);
@@ -47,6 +58,7 @@ void Reduce::AddInput(TReduceInputKey key, TReduceInputValue value)
 {
 	if (debug)
 		printf("DEBUG::Reduce add input %s -> %d\n", key.c_str(), value);
+	suffle_numOutputTuples++;
 	Input.insert(TReduceInputTuple(key, value));
 }
 
@@ -63,14 +75,15 @@ Reduce::Run()
 	for (TReduceInputIterator it1 = Input.begin(); it1 != Input.end(); it1 = it2)
 	{
 		TReduceInputKey key = (*it1).first;
+		reduce_numKeys++;
 		pair<TReduceInputIterator, TReduceInputIterator> keyRange = Input.equal_range(key);
 
 		err = ReduceFunction(this, key, keyRange.first, keyRange.second);
 		if (err != COk)
 			return (err);
 
-		//for (it2 = keyRange.first;  it2!=keyRange.second;  ++it2)
-		//   Input.erase(it2);
+		// for (it2 = keyRange.first;  it2!=keyRange.second;  ++it2)
+		//    Input.erase(it2);
 		Input.erase(keyRange.first, keyRange.second);
 		it2 = keyRange.second;
 	}
@@ -82,4 +95,40 @@ Reduce::Run()
 void Reduce::EmitResult(TReduceOutputKey key, TReduceOutputValue value)
 {
 	OutputFile << key << " " << value << endl;
+	reduce_numOutputBytes += key.length();
+	//+value.length();
 }
+
+// Shuffle
+int Reduce::GetSuffle_numOutputTuples()
+{
+	return suffle_numOutputTuples;
+}
+
+int Reduce::GetSuffle_numKeys()
+{
+	return suffle_numKeys;
+}
+
+// Reduce
+int Reduce::GetReduce_numKeys()
+{
+	return reduce_numKeys;
+}
+
+int Reduce::GetReduce_numOccurences()
+{
+	return reduce_numOccurences;
+}
+
+int Reduce::GetReduce_averageOccurKey()
+{
+	return reduce_averageOccurKey;
+}
+
+int Reduce::GetReduce_numOutputBytes()
+{
+	return reduce_numOutputBytes;
+}
+
+

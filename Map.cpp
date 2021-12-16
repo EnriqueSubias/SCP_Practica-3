@@ -38,15 +38,6 @@ int map_numInputTuples = 0;	 // Numero de tuplas de entrada procesadas
 int map_bytesProcessed = 0;	 // Numero de bytes procesados
 int map_numOutputTuples = 0; // Numero de tuplas de salida generadas
 
-// Suffle  Statiscis
-int suffle_numOutputTuples = 0; // Numero de tuplas de salida procesadas
-int suffle_numKeys = 0;			// Numero de claves procesadas
-
-// Reduce Statiscis
-int reduce_numKeys = 0;			// Numero de claves diferentes procesadas
-int reduce_numOccurences = 0;	// Numero de ocurrencias procesadas
-int reduce_averageOccurKey = 0; // Valor medio ocurrencias/clave
-int reduce_numOutputBytes = 0;	// Numero bytes escritos de salida
 
 // Lee fichero de entrada (split) línea a línea y lo guarda en una cola del Map en forma de
 // tuplas (key,value).

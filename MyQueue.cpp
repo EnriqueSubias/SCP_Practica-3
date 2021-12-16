@@ -7,15 +7,13 @@ X5707036T Robert Dragos Trif Apoltan
 --------------------------------------------------------------- */
 
 //#include "MyQueue.h"
-
 //#include <queue>
-
 #include <pthread.h>
 
 template <class T>
 MyQueue<T>::MyQueue()
 {
-	//	Queue = new std::queue<T>();
+	//Queue = new std::queue<T>();
 	pthread_rwlock_init(&rwlock, NULL);
 }
 

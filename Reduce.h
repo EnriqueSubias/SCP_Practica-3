@@ -43,6 +43,14 @@ public:
 	void AddInput(TReduceInputKey key, TReduceInputValue value);
 	TError Run();
 	void EmitResult(TReduceOutputKey key, TReduceOutputValue value);
+	
+	int GetSuffle_numOutputTuples();
+	int GetSuffle_numKeys();
+	
+	int GetReduce_numKeys();
+	int GetReduce_numOccurences();
+	int GetReduce_averageOccurKey();
+	int GetReduce_numOutputBytes();
 };
 typedef class Reduce TReduce, *PtrReduce;
 
