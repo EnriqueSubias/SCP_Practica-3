@@ -95,7 +95,7 @@ bool printReduce = true;
 
 int TotalReduce_NumKeys = 0;
 int TotalReduce_NumOcur = 0;
-int TotalReduce_AvgOcur = 0;
+float TotalReduce_AvgOcur = 0;
 int TotalReduce_NumOutBytes = 0;
 
 int Totalsuffle_numOutputTuples = 0;
@@ -135,7 +135,9 @@ MapReduce::MapReduce(char *input, char *output, TMapFunction mapf, TReduceFuncti
 	{
 		char filename[256];
 		sprintf(filename, "%s/result.r%d", OutputPath, x + 1);
-		AddReduce(new TReduce(ReduceFunction, filename));
+		PtrReduce reduce = new TReduce(ReduceFunction, filename);
+		reduce->init_mutex_lock();
+		AddReduce(reduce);
 	}
 }
 
@@ -278,6 +280,7 @@ void Estadistics_Suffle(struct thread_data_1 *data_1)
 		printSuffle = false;
 		for (vector<TReduce>::size_type m = 0; m != data_1->myObject->Reducers.size(); m++)
 		{
+			printf("\x1B[34m*** M:%li  \033[0m\n", m);
 			printf("Suffle1  ->  \tnumOutputTuples:%i  \tnumProcessedKeys:%i \n",
 				   data_1->myObject->Reducers[m]->GetSuffle_numOutputTuples(), data_1->myObject->Reducers[m]->GetSuffle_numKeys());
 			Totalsuffle_numOutputTuples += data_1->myObject->Reducers[m]->GetSuffle_numOutputTuples();
@@ -294,7 +297,7 @@ void Estadistics_Suffle(struct thread_data_1 *data_1)
 
 void Estadistics_Reduce(PtrReduce reductor)
 {
-	printf("Reduce   ->  Thread:%ld   \tnumKeys:%i   \tnumOccurences:%i  \taverageOccurencesPerKey:%i  \tnumOutputBytes %i\n",
+	printf("Reduce   ->  Thread:%ld   \tnumKeys:%i   \tnumOccurences:%i  \taverageOccurencesPerKey:%f  \tnumOutputBytes %i\n",
 		   pthread_self(), reductor->GetReduce_numKeys(), reductor->GetReduce_numOccurences(), reductor->GetReduce_averageOccurKey(), reductor->GetReduce_numOutputBytes());
 
 	pthread_mutex_lock(&Suffle_part);
@@ -311,8 +314,8 @@ void Estadistics_Reducer_Total()
 	if (printReduce == true)
 	{
 		printReduce = false;
-		printf("\x1B[33m*** Total Reduce  ->  \tnumKeys:%i   \tnumOccurences:%i  \taverageOccurencesPerKey:%i  \tnumOutputBytes %i \033[0m\n",
-			   TotalReduce_NumKeys, TotalReduce_NumOcur, TotalReduce_AvgOcur, TotalReduce_NumOutBytes);
+		printf("\x1B[33m*** Total Reduce  ->  \tnumKeys:%i   \tnumOccurences:%i  \taverageOccurencesPerKey:%f  \tnumOutputBytes %i \033[0m\n",
+			   TotalReduce_NumKeys, TotalReduce_NumOcur, (TotalReduce_AvgOcur / nreducers), TotalReduce_NumOutBytes);
 	}
 	pthread_mutex_unlock(&mutexTotalStatistics);
 }
@@ -390,6 +393,7 @@ MapReduce::Reduce(struct thread_data_1 *data_1)
 			pthread_mutex_unlock(&Reduce_part);
 			reductor->Run();
 			Estadistics_Reduce(reductor);
+			reductor->destroy_mutex_lock();
 		}
 	}
 	return (COk);
@@ -422,14 +426,7 @@ MapReduce::Suffle(struct thread_data_1 *data_1)
 
 				if (debug)
 					printf("DEBUG::MapReduce::Suffle merge key %s to reduce %d.\n", key.c_str(), r);
-
-				// Añadir todas las tuplas de la clave al reducer correspondiente.
-				pthread_mutex_lock(&mutex1);
 				Reducers[r]->AddInputKeys(keyRange.first, keyRange.second);
-				pthread_mutex_unlock(&mutex1);
-				// Eliminar todas las entradas correspondientes a esta clave.
-				// for (it2 = keyRange.first;  it2!=keyRange.second;  ++it2)
-				//   output.erase(it2);
 				output.erase(keyRange.first, keyRange.second);
 				it2 = keyRange.second;
 			}

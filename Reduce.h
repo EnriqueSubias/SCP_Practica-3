@@ -38,7 +38,8 @@ class Reduce
 public:
 	Reduce(TError (*reduceFunction)(class Reduce *, TReduceInputKey, TReduceInputIterator, TReduceInputIterator), string OutputPath);
 	~Reduce();
-
+	TError init_mutex_lock();
+	void destroy_mutex_lock();
 	void AddInputKeys(TMapOuputIterator begin, TMapOuputIterator end);
 	void AddInput(TReduceInputKey key, TReduceInputValue value);
 	TError Run();
@@ -49,7 +50,7 @@ public:
 
 	int GetReduce_numKeys();
 	int GetReduce_numOccurences();
-	int GetReduce_averageOccurKey();
+	float GetReduce_averageOccurKey();
 	int GetReduce_numOutputBytes();
 };
 typedef class Reduce TReduce, *PtrReduce;

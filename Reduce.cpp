@@ -8,7 +8,6 @@ X5707036T Robert Dragos Trif Apoltan
 
 #include "Reduce.h"
 #include "Types.h"
-
 #include <fstream> // std::ifstream
 
 // Constructor para una tarea Reduce, se le pasa la función que reducción que tiene que
@@ -20,10 +19,34 @@ int suffle_numOutputTuples = 0; // Numero de tuplas de salida procesadas
 int suffle_numKeys = 0;			// Numero de claves procesadas
 
 // Reduce Statiscis
-int reduce_numKeys = 0;			// Numero de claves diferentes procesadas
-int reduce_numOccurences = 0;	// Numero de ocurrencias procesadas
-int reduce_averageOccurKey = 0; // Valor medio ocurrencias/clave
-int reduce_numOutputBytes = 0;	// Numero bytes escritos de salida
+int reduce_numKeys = 0;			  // Numero de claves diferentes procesadas
+int reduce_numOccurences = 0;	  // Numero de ocurrencias procesadas
+float reduce_averageOccurKey = 0; // Valor medio ocurrencias/clave
+int reduce_numOutputBytes = 0;	  // Numero bytes escritos de salida
+
+pthread_mutex_t mutexLock;
+
+TError
+Reduce::init_mutex_lock()
+{
+	int err;
+	err = pthread_mutex_init(&mutexLock, NULL);
+	if (err != 0)
+		//return TError(1);
+        printf("\n mutex init failed\n");
+		
+	printf("err = %i\n", err);
+	return COk;
+	// */if (pthread_mutex_init(&mutexLock, NULL) != 0)
+    // {
+    //     printf("\n mutex init failed\n");
+    // }*/
+}
+
+void Reduce::destroy_mutex_lock()
+{
+	pthread_mutex_destroy(&mutexLock);
+}
 
 Reduce::Reduce(TReduceFunction reduceFunction, string OutputPath)
 {
@@ -56,10 +79,12 @@ void Reduce::AddInputKeys(TMapOuputIterator begin, TMapOuputIterator end)
 
 void Reduce::AddInput(TReduceInputKey key, TReduceInputValue value)
 {
+	pthread_mutex_lock(&mutexLock);
 	if (debug)
 		printf("DEBUG::Reduce add input %s -> %d\n", key.c_str(), value);
 	suffle_numOutputTuples++;
 	Input.insert(TReduceInputTuple(key, value));
+	pthread_mutex_unlock(&mutexLock);
 }
 
 // Función de ejecución de la tarea Reduce: por cada tupla de entrada invoca a la función
@@ -75,7 +100,6 @@ Reduce::Run()
 	for (TReduceInputIterator it1 = Input.begin(); it1 != Input.end(); it1 = it2)
 	{
 		TReduceInputKey key = (*it1).first;
-		reduce_numKeys++;
 		pair<TReduceInputIterator, TReduceInputIterator> keyRange = Input.equal_range(key);
 
 		err = ReduceFunction(this, key, keyRange.first, keyRange.second);
@@ -87,7 +111,7 @@ Reduce::Run()
 		Input.erase(keyRange.first, keyRange.second);
 		it2 = keyRange.second;
 	}
-
+	reduce_averageOccurKey = float(reduce_numKeys) / float(reduce_numOccurences);
 	return (COk);
 }
 
@@ -96,7 +120,8 @@ void Reduce::EmitResult(TReduceOutputKey key, TReduceOutputValue value)
 {
 	OutputFile << key << " " << value << endl;
 	reduce_numOutputBytes += key.length();
-	//+value.length();
+	reduce_numOccurences += value;
+	reduce_numKeys++;
 }
 
 // Shuffle
@@ -121,7 +146,7 @@ int Reduce::GetReduce_numOccurences()
 	return reduce_numOccurences;
 }
 
-int Reduce::GetReduce_averageOccurKey()
+float Reduce::GetReduce_averageOccurKey()
 {
 	return reduce_averageOccurKey;
 }
