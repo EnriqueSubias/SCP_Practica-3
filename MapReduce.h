@@ -27,7 +27,6 @@ class MapReduce
 
 	vector<PtrMap> Mappers;
 
-	stack<PtrMap> stackMaps;
 
 public:
 	MapReduce(char *input, char *output, TMapFunction map, TReduceFunction reduce, int nreducers);
@@ -40,8 +39,6 @@ public:
 
 	inline void AddMap(PtrMap map) { Mappers.push_back(map); };
 	inline void AddReduce(PtrReduce reducer) { Reducers.push_back(reducer); };
-
-	inline void AddStackMap(PtrMap map) { stackMaps.push(map); };
 	// inline PtrMap PopStackMap(PtrMap map) { stackMaps.pop(); };
 	// inline void TopStackMap(PtrMap map) { stackMaps.top(); };
 };
