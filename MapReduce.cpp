@@ -18,7 +18,7 @@ using namespace std;
 int splitBigFiles(char *input);
 int getNumberFiles(char *input);
 int getNamesFiles(char *names[], char *input);
-void Fases_Concurentes_1(struct thread_data_1 *data_1);
+void Fases_Concurentes(struct thread_data_1 *data_1);
 void Fases_Concurentes_2(struct thread_data_2 *data_2);
 
 struct thread_data_2
@@ -105,13 +105,18 @@ pthread_barrier_t barrierSplit;
 pthread_barrier_t barrierMap;
 pthread_barrier_t EndMap;
 pthread_barrier_t EndSuffle;
+pthread_barrier_t EndSuffle_Estadistics;
 pthread_barrier_t EndReducer;
 
 pthread_mutex_t mutex1;
 pthread_mutex_t mutexFicheros;
 pthread_mutex_t mutexStatistics;
+pthread_mutex_t mutexTotalStatistics;
 pthread_mutex_t Suffle_part;
 pthread_mutex_t Reduce_part;
+pthread_mutex_t mutexAddMap;
+pthread_mutex_t mutexNumReducers;
+
 // MyQueue <queue> = new MyQueue<int>[5];
 //  sufflequeue = new MyQueue<int>[Reducers.size()];
 
@@ -188,6 +193,8 @@ MapReduce::Run(int nreducers2)
 	pthread_barrier_init(&EndMap, NULL, nfiles);
 	pthread_barrier_init(&EndSuffle, NULL, nreducers);
 	pthread_barrier_init(&EndReducer, NULL, nreducers);
+	pthread_barrier_init(&EndSuffle_Estadistics, NULL, nreducers);
+
 	// Primeros threads
 	printf("\n\x1B[32mProcesando Fase 1 con %d threads...\033[0m\n", nfiles);
 	for (int i = 0; i < nfiles; i++)
@@ -195,7 +202,7 @@ MapReduce::Run(int nreducers2)
 		if (debug)
 			printf("> Thread %d creado Fase 1 \n", i);
 
-		int s = pthread_create(&thread_ids_1[i], NULL, (void *(*)(void *))Fases_Concurentes_1, (void *)&data_1[i]);
+		int s = pthread_create(&thread_ids_1[i], NULL, (void *(*)(void *))Fases_Concurentes, (void *)&data_1[i]);
 		if (s != 0)
 		{
 			// error("pthread_create");
@@ -214,7 +221,8 @@ MapReduce::Run(int nreducers2)
 	return (COk);
 }
 
-void Estadistics_Split(struct thread_data_1 *data_1){
+void Estadistics_Split(struct thread_data_1 *data_1)
+{
 	printf("Split -> Thread:%ld  ConArchivo:%s   \tbytesReaded:%i  \tnumLinesReaded:%i  \tnumTuples:%i  \n",
 		   pthread_self(), data_1->input_path, data_1->map->GetSplit_bytesReaded(), data_1->map->GetSplit_numLinesReaded(), data_1->map->GetSplit_numTuples());
 
@@ -226,12 +234,20 @@ void Estadistics_Split(struct thread_data_1 *data_1){
 	pthread_mutex_unlock(&mutexStatistics);
 }
 
-void Estadistics_Total_Split(struct thread_data_1 *data_1){
-	printf("\x1B[33m*** Total Split  -> NTotalArchvios:%i   \tbytesReaded:%i  \tnumLinesReaded:%i  \tnumTuples:%i  \033[0m\n",
+void Estadistics_Total_Split(struct thread_data_1 *data_1)
+{
+	pthread_mutex_lock(&mutexTotalStatistics);
+	if (printSplit == true)
+	{
+		printSplit = false;
+		printf("\x1B[33m*** Total Split  -> NTotalArchvios:%i   \tbytesReaded:%i  \tnumLinesReaded:%i  \tnumTuples:%i  \033[0m\n",
 			   TotalSplit_archivos, TotalSplit_bytesReaded, TotalSplit_numLinesReaded, TotalSplit_numTuples);
+	}
+	pthread_mutex_unlock(&mutexTotalStatistics);
 }
 
-void Estadistics_Map(struct thread_data_1 *data_1){
+void Estadistics_Map(struct thread_data_1 *data_1)
+{
 	printf("Map  ->  Thread:%ld  ConArchivo:%s   \tnumInputTuples:%i  \tbytesProcessed:%i  \tnumOutputTuples:%i\n",
 		   pthread_self(), data_1->input_path, data_1->map->GetMap_numInputTuples(), data_1->map->GetMap_bytesProcessed(), data_1->map->GetMap_numOutputTuples());
 
@@ -242,23 +258,66 @@ void Estadistics_Map(struct thread_data_1 *data_1){
 	pthread_mutex_unlock(&mutexStatistics);
 }
 
-void Estadistics_Total_Map(struct thread_data_1 *data_1){
-	printf("\x1B[33m*** Total Map  -> NTotalArchvios:%i   \tnumInputTuples:%i  \tbytesProcessed:%i  \tnumOutputTuples:%i  \033[0m\n",
+void Estadistics_Total_Map(struct thread_data_1 *data_1)
+{
+	pthread_mutex_lock(&mutexTotalStatistics);
+	if (printMap == true)
+	{
+		printMap = false;
+		printf("\x1B[33m*** Total Map  -> NTotalArchvios:%i   \tnumInputTuples:%i  \tbytesProcessed:%i  \tnumOutputTuples:%i  \033[0m\n",
 			   TotalSplit_archivos, TotalMap_numInputTuples, TotalMap_bytesProcessed, TotalMap_numOutputTuples);
-}
-void Estadistics_Suffle(struct thread_data_1 *data_1,int m){
-	printf("Suffle1  ->  \tnumOutputTuples:%i  \tnumProcessedKeys:%i \n",
-					   data_1->myObject->Reducers[m]->GetSuffle_numOutputTuples(), data_1->myObject->Reducers[m]->GetSuffle_numKeys());
-	Totalsuffle_numOutputTuples+= data_1->myObject->Reducers[m]->GetSuffle_numOutputTuples();
-	Totalsuffle_numKeys+=  data_1->myObject->Reducers[m]->GetSuffle_numKeys();
+	}
+	pthread_mutex_unlock(&mutexTotalStatistics);
 }
 
-void Estadistics_Suffle_Total(){
-	printf("\x1B[33m*** Total Suffle  ->  \tnumOutputTuples:%i   \tnumProcessedKeys:%i \033[0m\n",
-				   Totalsuffle_numOutputTuples, Totalsuffle_numKeys);
+void Estadistics_Suffle(struct thread_data_1 *data_1)
+{
+	pthread_mutex_lock(&mutexTotalStatistics);
+	if (printSuffle == true)
+	{
+		printSuffle = false;
+		for (vector<TReduce>::size_type m = 0; m != data_1->myObject->Reducers.size(); m++)
+		{
+			printf("Suffle1  ->  \tnumOutputTuples:%i  \tnumProcessedKeys:%i \n",
+				   data_1->myObject->Reducers[m]->GetSuffle_numOutputTuples(), data_1->myObject->Reducers[m]->GetSuffle_numKeys());
+			Totalsuffle_numOutputTuples += data_1->myObject->Reducers[m]->GetSuffle_numOutputTuples();
+			Totalsuffle_numKeys += data_1->myObject->Reducers[m]->GetSuffle_numKeys();
+		}
+		// printf("\x1B[33m###-1 Total Suffle Print ----- \033[0m\n");
+		printf("\x1B[33m*** Total Suffle  ->  \tnumOutputTuples:%i   \tnumProcessedKeys:%i \033[0m\n",
+			   Totalsuffle_numOutputTuples, Totalsuffle_numKeys);
+		// printf("\x1B[33m###-2 Total Suffle Print ----- \033[0m\n");
+	}
+	pthread_mutex_unlock(&mutexTotalStatistics);
+	pthread_barrier_wait(&EndSuffle_Estadistics);
 }
 
-void Fases_Concurentes_1(struct thread_data_1 *data_1)
+void Estadistics_Reduce(PtrReduce reductor)
+{
+	printf("Reduce   ->  Thread:%ld   \tnumKeys:%i   \tnumOccurences:%i  \taverageOccurencesPerKey:%i  \tnumOutputBytes %i\n",
+		   pthread_self(), reductor->GetReduce_numKeys(), reductor->GetReduce_numOccurences(), reductor->GetReduce_averageOccurKey(), reductor->GetReduce_numOutputBytes());
+
+	pthread_mutex_lock(&Suffle_part);
+	TotalReduce_NumKeys += reductor->GetReduce_numKeys();
+	TotalReduce_NumOcur += reductor->GetReduce_numOccurences();
+	TotalReduce_AvgOcur += reductor->GetReduce_averageOccurKey();
+	TotalReduce_NumOutBytes += reductor->GetReduce_numOutputBytes();
+	pthread_mutex_unlock(&Suffle_part);
+}
+
+void Estadistics_Reducer_Total()
+{
+	pthread_mutex_lock(&mutexTotalStatistics);
+	if (printReduce == true)
+	{
+		printReduce = false;
+		printf("\x1B[33m*** Total Reduce  ->  \tnumKeys:%i   \tnumOccurences:%i  \taverageOccurencesPerKey:%i  \tnumOutputBytes %i \033[0m\n",
+			   TotalReduce_NumKeys, TotalReduce_NumOcur, TotalReduce_AvgOcur, TotalReduce_NumOutBytes);
+	}
+	pthread_mutex_unlock(&mutexTotalStatistics);
+}
+
+void Fases_Concurentes(struct thread_data_1 *data_1)
 {
 	char *full_path = data_1->input_folder;
 
@@ -272,69 +331,47 @@ void Fases_Concurentes_1(struct thread_data_1 *data_1)
 	// **** Split *****
 	if (data_1->myObject->Split(full_path, data_1) != COk)
 		error("MapReduce::Concurent 1 - Error Split");
-	// Split Statistics (TODO: Poner en una funcion a parte)
 	Estadistics_Split(data_1);
-	
 	pthread_barrier_wait(&barrierSplit); // Final de la fase de Split
-	if (printSplit == true)
-	{
-		printSplit = false;
-		Estadistics_Total_Split(data_1);
-	}
+	Estadistics_Total_Split(data_1);
 
 	// **** Map *****
 	if (data_1->myObject->Map(data_1) != COk)
 		error("MapReduce::Concurent 1 - Error Map");
-	// Map Statistics (TODO: Poner en una funcion a parte)
-	
 	Estadistics_Map(data_1);
 	pthread_barrier_wait(&barrierMap); // Final de la fase de Split
-	if (printMap == true)
-	{
-		printMap = false;
-		Estadistics_Total_Map(data_1);
-	}
+	Estadistics_Total_Map(data_1);
 
-	pthread_mutex_lock(&mutexStatistics);
+	// ** Add MAPS to Mappeds
+	pthread_mutex_lock(&mutexAddMap);
 	data_1->myObject->AddMap(data_1->map);
-	pthread_mutex_unlock(&mutexStatistics);
+	pthread_mutex_unlock(&mutexAddMap);
 
 	pthread_barrier_wait(&EndMap);
-	if (numReducers < nreducers)
+
+	// **** Reduccion de threads activos de nFiles a nReducers ****
+	pthread_mutex_lock(&mutexNumReducers);
+	if (numReducers < nreducers) // Los ultimos therads que llegen no hacen las dos ultimas fases
 	{
 		numReducers += 1;
-		// printf("\x1B[33m %ld Solo threads Suffle Reducer: %i \033[0m\n", pthread_self(), numReducers);
+		pthread_mutex_unlock(&mutexNumReducers);
 
 		// **** Suffle *****
-		//data_1->myObject->Suffle(data_1);
 		if (data_1->myObject->Suffle(data_1) != COk)
 			error("MapReduce::Concurent 1 - Error Shuffle");
 		pthread_barrier_wait(&EndSuffle);
-		if (printSuffle == true)
-		{
-			printSuffle = false;
-			for (vector<TReduce>::size_type m = 0; m != data_1->myObject->Reducers.size(); m++)
-			{
-				Estadistics_Suffle(data_1,m);
-			}
-			Estadistics_Suffle_Total();
-			//printf("\x1B[33m*** Total Suffle  ->  :\033[0m\n");
-		}
-		
+		Estadistics_Suffle(data_1);
+
 		// **** Reduce ****
-		//data_1->myObject->Reduce(data_1);
 		if (data_1->myObject->Reduce(data_1) != COk)
 			error("MapReduce::Concurent 1 - Error Reduce");
 		pthread_barrier_wait(&EndReducer);
-		if (printReduce == true)
-		{
-			printReduce = false;
-			printf("\x1B[33m*** Total Reduce  ->  \tnumKeys:%i   \tnumOccurences:%i  \taverageOccurencesPerKey:%i  \tnumOutputBytes %i \033[0m\n",
-				   TotalReduce_NumKeys, TotalReduce_NumOcur, TotalReduce_AvgOcur, TotalReduce_NumOutBytes);
-		}
-		
+		Estadistics_Reducer_Total();
 	}
-	// pthread_mutex_unlock(&mutexStatistics);
+	else
+	{
+		pthread_mutex_unlock(&mutexNumReducers);
+	}
 }
 
 TError
@@ -352,57 +389,23 @@ MapReduce::Reduce(struct thread_data_1 *data_1)
 			data_1->myObject->Reducers.pop_back();
 			pthread_mutex_unlock(&Reduce_part);
 			reductor->Run();
-
-			// Suffle Statistics (TODO: Poner en una funcion a parte)
-			printf("Suffle2  ->  Thread:%ld   \tnumOutputTuples:%i  \tnumProcessedKeys:%i \n",
-				   pthread_self(), reductor->GetSuffle_numOutputTuples(), reductor->GetSuffle_numKeys());
-
-			// Reduce Statistics (TODO: Poner en una funcion a parte)
-			printf("Reduce   ->  Thread:%ld   \tnumKeys:%i   \tnumOccurences:%i  \taverageOccurencesPerKey:%i  \tnumOutputBytes %i\n",
-				   pthread_self(), reductor->GetReduce_numKeys(), reductor->GetReduce_numOccurences(), reductor->GetReduce_averageOccurKey(), reductor->GetReduce_numOutputBytes());
-
-			pthread_mutex_lock(&Suffle_part);
-			TotalReduce_NumKeys += reductor->GetReduce_numKeys();
-			TotalReduce_NumOcur += reductor->GetReduce_numOccurences();
-			TotalReduce_AvgOcur += reductor->GetReduce_averageOccurKey();
-			TotalReduce_NumOutBytes += reductor->GetReduce_numOutputBytes();
-			pthread_mutex_unlock(&Suffle_part);
+			Estadistics_Reduce(reductor);
 		}
 	}
 	return (COk);
-
-	/*for(vector<TReduce>::size_type m = 0; m != Reducers.size(); m++)
-	{
-		if (Reducers[m]->Run()!=COk)
-			error("MapReduce::Reduce Run error.\n");
-	}*/
-
-	// pthread_mutex_lock(&Suffle_part);
-	// printf("Reducer size:%li \n", data_1->myObject->Reducers.size());
-	// while (!Reducers.empty() && count_reduce < nreducers)
-	// {
-	// 	printf("Thread: %ld\n", pthread_self());
-	// 	PtrReduce reductor = data_1->myObject->Reducers.back();
-	// 	data_1->myObject->Reducers.pop_back();
-	// 	count_reduce++;
-	// 	pthread_mutex_unlock(&Suffle_part);
-	// 	reductor->Run();
-	// }
 }
 
 TError
 MapReduce::Suffle(struct thread_data_1 *data_1)
 {
 	TMapOuputIterator it2;
-	// printf("Mappers size: %li\n", Mappers.size());
-
 	while (Mappers.size() != 0 && count_suffle != numficheros)
 	{
-
+		pthread_mutex_lock(&Suffle_part);
 		if (count_suffle != numficheros)
 		{
 			count_suffle++;
-			pthread_mutex_lock(&Suffle_part);
+
 			multimap<string, int> output = Mappers.back()->getOutput();
 			// printf("Mappers size: %li\n", Mappers.size());
 			Mappers.pop_back();
@@ -431,49 +434,14 @@ MapReduce::Suffle(struct thread_data_1 *data_1)
 				it2 = keyRange.second;
 			}
 		}
+		else
+		{
+			pthread_mutex_unlock(&Suffle_part);
+		}
 	}
-
-	// MyQueue <int> *sufflequeue = new MyQueue<int>[Reducers.size()];
-	// sufflequeue.AddMap();
-	// sufflequeue->push(4);
-	// printf("MyQueue %s \n", sufflequeue.end);
-
-	/*for (vector<TMap>::size_type m = 0; m != Mappers.size(); m++)
-	{
-		multimap<string, int> output = Mappers[m]->getOutput();
-
-			// Process all mapper outputs
-			for (TMapOuputIterator it1=output.begin(); it1!=output.end(); it1=it2)
-			{
-				TMapOutputKey key = (*it1).first;
-				pair<TMapOuputIterator, TMapOuputIterator> keyRange = output.equal_range(key);
-
-				// Calcular a que reducer le corresponde está clave:
-				int r = std::hash<TMapOutputKey>{}(key)%Reducers.size();
-
-				if (debug) printf ("DEBUG::MapReduce::Suffle merge key %s to reduce %d.\n", key.c_str(), r);
-
-				// Añadir todas las tuplas de la clave al reducer correspondiente.
-				Reducers[r]->AddInputKeys(keyRange.first, keyRange.second);
-
-				// Eliminar todas las entradas correspondientes a esta clave.
-				//for (it2 = keyRange.first;  it2!=keyRange.second;  ++it2)
-				//   output.erase(it2);
-			output.erase(keyRange.first,keyRange.second);
-			it2=keyRange.second;
-			}
-	}*/
 	return (COk);
 }
 
-/*
-void Fases_Concurentes_2(struct thread_data_2 *data_2)
-{
-	if (data_2->myObject->Reduce(data_2) != COk)
-		error("MapReduce::Concurent 2 - Error Reduce");
-}*/
-
-// Retorna el numero de archivos en el directorio indicado por parametro
 int getNumberFiles(char *input)
 {
 	int count = 0;
@@ -548,49 +516,3 @@ MapReduce::Map(struct thread_data_1 *data_1)
 	}
 	return (COk);
 }
-
-// Ordena y junta todas las tuplas de salida de los maps. Utiliza una función de hash como
-// función de partición, para distribuir las claves entre los posibles reducers.
-// Utiliza un multimap para realizar la ordenación/unión.
-/*TError
-MapReduce::Suffle(struct thread_data_1 *data_1)
-{
-	printf("Shuffle: thread %ld\n", pthread_self());
-	TMapOuputIterator it2;
-
-	multimap<string, int> output = data_1->map->getOutput(); // data_1.map para coger nuestro mapa wey
-
-	// Process all mapper outputs
-	for (TMapOuputIterator it1 = output.begin(); it1 != output.end(); it1 = it2)
-	{
-		TMapOutputKey key = (*it1).first;
-		pair<TMapOuputIterator, TMapOuputIterator> keyRange = output.equal_range(key);
-
-		// Calcular a que reducer le corresponde está clave:
-		int r = std::hash<TMapOutputKey>{}(key) % Reducers.size();
-
-		if (debug)
-			printf("DEBUG::MapReduce::Suffle merge key %s to reduce %d.\n", key.c_str(), r);
-
-		// Añadir todas las tuplas de la clave al reducer correspondiente.
-		pthread_mutex_lock(&mutex1);
-		Reducers[r]->AddInputKeys(keyRange.first, keyRange.second);
-		pthread_mutex_unlock(&mutex1);
-
-		output.erase(keyRange.first, keyRange.second);
-		it2 = keyRange.second;
-	}
-	return (COk);
-}*/
-
-// Ejecuta cada uno de los Reducers.
-/*TError
-MapReduce::Reduce(struct thread_data_2 *data_2)
-{
-	printf("Reduce: thread %ld\n", pthread_self());
-	if (Reducers[data_2->numReducer]->Run() != COk)
-	{
-		error("MapReduce::Reduce Run error.\n");
-	}
-	return (COk);
-}*/
