@@ -54,6 +54,9 @@ public:
 	TError Run();
 	void EmitResult(TMapOutputKey key, TMapOutputValue value);
 
+	TError init_mutex();
+	TError destroy_mutex();
+
 	int GetSplit_bytesReaded();
 	int GetSplit_numLinesReaded();
 	int GetSplit_numTuples();

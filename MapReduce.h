@@ -32,10 +32,15 @@ public:
 	MapReduce(char *input, char *output, TMapFunction map, TReduceFunction reduce, int nreducers);
 	TError Run(int nreducers2);
 	vector<PtrReduce> Reducers;
-	TError Split(char *input, struct thread_data_1 *data_1);
-	TError Map(struct thread_data_1 *data_1);
-	TError Suffle(struct thread_data_1 *data_1);
-	TError Reduce(struct thread_data_1 *data_1);
+	int init_mutex();
+	int destroy_mutex();
+	int init_barrier(int nfiles,int nreducer);
+	int destroy_barrier();
+
+	TError Split(char *input, struct thread_data *data);
+	TError Map(struct thread_data *data);
+	TError Suffle(struct thread_data *data);
+	TError Reduce(struct thread_data *data);
 
 	inline void AddMap(PtrMap map) { Mappers.push_back(map); };
 	inline void AddReduce(PtrReduce reducer) { Reducers.push_back(reducer); };

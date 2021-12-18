@@ -26,26 +26,26 @@ int reduce_numOutputBytes = 0;	  // Numero bytes escritos de salida
 
 pthread_mutex_t mutexLock;
 
-TError
-Reduce::init_mutex_lock()
+int Reduce::init_mutex_lock()
 {
 	int err;
 	err = pthread_mutex_init(&mutexLock, NULL);
 	if (err != 0)
-		//return TError(1);
-        printf("\n mutex init failed\n");
-		
+		// return TError(1);
+		printf("\n mutex init failed\n");
+
 	printf("err = %i\n", err);
 	return COk;
 	// */if (pthread_mutex_init(&mutexLock, NULL) != 0)
-    // {
-    //     printf("\n mutex init failed\n");
-    // }*/
+	// {
+	//     printf("\n mutex init failed\n");
+	// }*/
 }
 
-void Reduce::destroy_mutex_lock()
+int Reduce::destroy_mutex_lock()
 {
 	pthread_mutex_destroy(&mutexLock);
+	return COk;
 }
 
 Reduce::Reduce(TReduceFunction reduceFunction, string OutputPath)
@@ -128,6 +128,12 @@ void Reduce::EmitResult(TReduceOutputKey key, TReduceOutputValue value)
 int Reduce::GetSuffle_numOutputTuples()
 {
 	return suffle_numOutputTuples;
+}
+
+void Reduce::PrintSuffle()
+{
+	printf("Suffle1  ->  \tnumOutputTuples:%i  \tnumProcessedKeys:%i \n",
+		   suffle_numOutputTuples, suffle_numKeys);
 }
 
 int Reduce::GetSuffle_numKeys()
