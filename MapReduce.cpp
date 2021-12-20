@@ -4,7 +4,7 @@ Código fuente: MapReduce.cpp
 Grau Informàtica
 X5707036T Robert Dragos Trif Apoltan
 49271860T Enrique Alejo Subías Melgar
---------------------------------------------------------------- */
+---------------------------+------------------------------------ */
 
 #include "MapReduce.h"
 #include "Types.h"
@@ -63,6 +63,7 @@ int TotalReduce_NumOutBytes = 0;
 
 int Totalsuffle_numOutputTuples = 0;
 int Totalsuffle_numKeys = 0;
+vector<PtrReduce> *defReducers;
 
 pthread_barrier_t barrierSplit;
 pthread_barrier_t barrierMap;
@@ -100,7 +101,9 @@ int MapReduce::init_barrier(int nfiles, int nreducers)
 			}
 		}
 	}
-	return 1;
+	error("init barrier failed");
+	pthread_cancel(pthread_self());
+	exit(1);
 }
 
 int MapReduce::destroy_barrier()
@@ -124,7 +127,9 @@ int MapReduce::destroy_barrier()
 			}
 		}
 	}
-	return 1;
+	error("destroy barrier failed");
+	pthread_cancel(pthread_self());
+	exit(1);
 }
 
 int MapReduce::init_mutex()
@@ -151,7 +156,9 @@ int MapReduce::init_mutex()
 			}
 		}
 	}
-	return 1;
+	error("Mutex init failed");
+	pthread_cancel(pthread_self());
+	exit(1);
 }
 
 int MapReduce::destroy_mutex()
@@ -178,7 +185,9 @@ int MapReduce::destroy_mutex()
 			}
 		}
 	}
-	return 1;
+	error("Mutex destroy failed");
+	pthread_cancel(pthread_self());
+	exit(1);
 }
 
 // MyQueue <queue> = new MyQueue<int>[5];
@@ -194,7 +203,7 @@ MapReduce::MapReduce(char *input, char *output, TMapFunction mapf, TReduceFuncti
 
 	if (debug)
 		printf("nreducers: %d\n", nreducers);
-
+	defReducers = (vector<PtrReduce> *)malloc(sizeof(defReducers[nreducers]));
 	for (int x = 0; x < nreducers; x++)
 	{
 		char filename[256];
@@ -202,6 +211,7 @@ MapReduce::MapReduce(char *input, char *output, TMapFunction mapf, TReduceFuncti
 		PtrReduce reduce = new TReduce(ReduceFunction, filename);
 		reduce->init_mutex_lock();
 		AddReduce(reduce);
+		defReducers->push_back(reduce);
 	}
 }
 
@@ -211,11 +221,7 @@ MapReduce::Run(int nreducers2)
 {
 	int nfiles = getNumberFiles(InputPath); // numero de los ficheros para crear los arrays
 	nreducers = nreducers2;
-	if (init_mutex() != 0)
-	{
-		error("Error creando Mutex");
-		exit(1);
-	}
+	init_mutex();
 
 	// creacion de los threads array
 	pthread_t *thread_ids_1;
@@ -231,7 +237,7 @@ MapReduce::Run(int nreducers2)
 		error("malloc1 error\n");
 
 	// estructuras de datos para los segundos threads // Crear tantos como se especifiquen por parametro
-
+	
 	char *names[nfiles];			 // nombre de los ficheros
 	getNamesFiles(names, InputPath); // función para leer los ficheros
 
@@ -252,11 +258,7 @@ MapReduce::Run(int nreducers2)
 	TotalSplit_archivos = nfiles;
 	numficheros = nfiles;
 
-	if (init_barrier(nfiles, nreducers))
-	{
-		error("Error creando Barriers");
-		exit(1);
-	}
+	init_barrier(nfiles, nreducers);
 
 	// Primeros threads
 	printf("\n\x1B[32mProcesando Fase 1 con %d threads...\033[0m\n", nfiles);
@@ -268,7 +270,6 @@ MapReduce::Run(int nreducers2)
 		int s = pthread_create(&thread_ids_1[i], NULL, (void *(*)(void *))Fases_Concurentes, (void *)&data[i]);
 		if (s != 0)
 		{
-			// error("pthread_create");
 			error("Create::Concurent - Error Create Thread");
 		}
 	}
@@ -279,22 +280,14 @@ MapReduce::Run(int nreducers2)
 		int s = pthread_join(thread_ids_1[i], (void **)NULL);
 		if (s != 0)
 		{
-			// error("pthread_create");
 			error("Join::Concurent - Error Join Thread");
+			pthread_cancel(pthread_self());
+			exit(1);
 		}
 	}
 
-	if (destroy_barrier() != 0)
-	{
-		error("Error destruyndo Barrier");
-		exit(1);
-	}
-	if (destroy_mutex() != 0)
-	{
-		error("Error destruyendo Mutex");
-		exit(1);
-	}
-
+	destroy_barrier();
+	destroy_mutex();
 	return (COk);
 }
 
@@ -354,11 +347,12 @@ void Estadistics_Suffle(struct thread_data *data)
 		printSuffle = false;
 		for (vector<TReduce>::size_type m = 0; m != data->myObject->Reducers.size(); m++)
 		{
-			printf("Suffle1  ->  \tnumOutputTuples:%i  \tnumProcessedKeys:%i \n",
-				   data->myObject->Reducers[m]->GetSuffle_numOutputTuples(), data->myObject->Reducers[m]->GetSuffle_numKeys());
-			Totalsuffle_numOutputTuples += data->myObject->Reducers[m]->GetSuffle_numOutputTuples();
-			Totalsuffle_numKeys += data->myObject->Reducers[m]->GetSuffle_numKeys();
-			//data->myObject->Reducers[m]->PrintSuffle();
+			// data->myObject->Reducers.at(m);
+			printf("Suffle  ->  \tnumOutputTuples:%i  \tnumProcessedKeys:%i \n",
+				   data->myObject->Reducers.at(m)->GetSuffle_numOutputTuples(), data->myObject->Reducers.at(m)->GetSuffle_numKeys());
+			Totalsuffle_numOutputTuples += data->myObject->Reducers.at(m)->GetSuffle_numOutputTuples();
+			Totalsuffle_numKeys += data->myObject->Reducers.at(m)->GetSuffle_numKeys();
+			// data->myObject->Reducers[m]->PrintSuffle();
 		}
 		// printf("\x1B[33m###-1 Total Suffle Print ----- \033[0m\n");
 		printf("\x1B[33m*** Total Suffle  ->  \tnumOutputTuples:%i   \tnumProcessedKeys:%i \033[0m\n",
@@ -412,14 +406,22 @@ void Fases_Concurentes(struct thread_data *data)
 
 	// **** Split *****
 	if (data->myObject->Split(full_path, data) != COk)
+	{
 		error("MapReduce::Concurent 1 - Error Split");
+		pthread_cancel(pthread_self());
+		exit(1);
+	}
 	Estadistics_Split(data);
 	pthread_barrier_wait(&barrierSplit); // Final de la fase de Split
 	Estadistics_Total_Split(data);
 
 	// **** Map *****
 	if (data->myObject->Map(data) != COk)
+	{
 		error("MapReduce::Concurent 1 - Error Map");
+		pthread_cancel(pthread_self());
+		exit(1);
+	}
 	Estadistics_Map(data);
 	pthread_barrier_wait(&barrierMap); // Final de la fase de Split
 	Estadistics_Total_Map(data);
@@ -440,13 +442,21 @@ void Fases_Concurentes(struct thread_data *data)
 
 		// **** Suffle *****
 		if (data->myObject->Suffle(data) != COk)
+		{
 			error("MapReduce::Concurent 1 - Error Shuffle");
+			pthread_cancel(pthread_self());
+			exit(1);
+		}
 		pthread_barrier_wait(&EndSuffle);
 		Estadistics_Suffle(data);
 
 		// **** Reduce ****
 		if (data->myObject->Reduce(data) != COk)
+		{
 			error("MapReduce::Concurent 1 - Error Reduce");
+			pthread_cancel(pthread_self());
+			exit(1);
+		}
 		pthread_barrier_wait(&EndReducer);
 		Estadistics_Reducer_Total();
 	}
@@ -501,22 +511,23 @@ MapReduce::Suffle(struct thread_data *data)
 				pair<TMapOuputIterator, TMapOuputIterator> keyRange = output.equal_range(key);
 
 				// Calcular a que reducer le corresponde está clave:
-				int r = std::hash<TMapOutputKey>{}(key) % Reducers.size();
+				int r = std::hash<TMapOutputKey>{}(key) % data->myObject->Reducers.size();
 
 				if (debug)
 					printf("DEBUG::MapReduce::Suffle merge key %s to reduce %d.\n", key.c_str(), r);
-				Reducers[r]->AddInputKeys(keyRange.first, keyRange.second);
+					//defReducers->at(r)->AddInputKeys
+				data->myObject->Reducers.at(r)->AddInputKeys(keyRange.first, keyRange.second);
 				output.erase(keyRange.first, keyRange.second);
 				it2 = keyRange.second;
 			}
-			//Estadistics_Suffle(data);
+			// Estadistics_Suffle(data);
 		}
 		else
 		{
 			pthread_mutex_unlock(&Suffle_part);
 		}
 	}
-	return (COk);
+	return COk;
 }
 
 int getNumberFiles(char *input)
@@ -576,8 +587,10 @@ MapReduce::Split(char *input, struct thread_data *data)
 	if (data->map->ReadFileTuples(input) != COk)
 	{
 		error("MapReduce::Split Run error.\n");
+		pthread_cancel(pthread_self());
+		exit(1);
 	}
-	return (COk);
+	return COk;
 }
 
 // Ejecuta cada uno de los Maps.
@@ -590,6 +603,8 @@ MapReduce::Map(struct thread_data *data)
 	if (data->map->Run() != COk)
 	{
 		error("MapReduce::Map Run error.\n");
+		pthread_cancel(pthread_self());
+		exit(1);
 	}
-	return (COk);
+	return COk;
 }

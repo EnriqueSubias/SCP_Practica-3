@@ -29,14 +29,14 @@ TError
 Map::init_mutex()
 {
 	pthread_mutex_init(&mutexMap, NULL);
-	return (COk);
+	return COk;
 }
 
 TError
 Map::destroy_mutex()
 {
 	pthread_mutex_destroy(&mutexMap);
-	return (COk);
+	return COk;
 }
 
 // Lee fichero de entrada (split) línea a línea y lo guarda en una cola del Map en forma de
@@ -64,7 +64,7 @@ Map::ReadFileTuples(char *fileName)
 	// est_split->numTuplesGenerated = numTuplas;
 	// est_split->bytesReaded = numeroDeBytes;
 	file.close();
-	return (COk);
+	return COk;
 }
 
 // tuplas (key,value).
@@ -82,7 +82,6 @@ TError
 Map::Run()
 {
 	TError err;
-
 	while (!Input.empty())
 	{
 		pthread_mutex_lock(&mutexMap);
@@ -90,14 +89,18 @@ Map::Run()
 			printf("DEBUG:Thread %ld :Map process input tuple %ld -> %s\n", pthread_self(), (Input.front())->getKey(), (Input.front())->getValue().c_str());
 		err = MapFunction(this, *(Input.front()));
 		if (err != COk)
-			return (err);
+		{
+			error("Error in Map.cpp -> Run");
+			pthread_cancel(pthread_self());
+			exit(1);
+		}
 		map_numInputTuples = map_numInputTuples + 1;
 		Input.pop();
 		pthread_mutex_unlock(&mutexMap);
 	}
 	// est_map->numOutputTuples = outputTuplesCount;
 	// est_map->bytesProcessed = NumBytesTuples;
-	return (COk);
+	return COk;
 }
 
 // Función para escribir un resultado parcial del Map en forma de tupla (key,value)

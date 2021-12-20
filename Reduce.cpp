@@ -31,20 +31,24 @@ int Reduce::init_mutex_lock()
 	int err;
 	err = pthread_mutex_init(&mutexLock, NULL);
 	if (err != 0)
-		// return TError(1);
-		printf("\n mutex init failed\n");
-
-	printf("err = %i\n", err);
+	{
+		error("Mutex init failed");
+		pthread_cancel(pthread_self());
+		exit(1);
+	}
 	return COk;
-	// */if (pthread_mutex_init(&mutexLock, NULL) != 0)
-	// {
-	//     printf("\n mutex init failed\n");
-	// }*/
 }
 
 int Reduce::destroy_mutex_lock()
 {
-	pthread_mutex_destroy(&mutexLock);
+	int err;
+	err = pthread_mutex_destroy(&mutexLock);
+	if (err != 0)
+	{
+		error("Mutex init failed");
+		pthread_cancel(pthread_self());
+		exit(1);
+	}
 	return COk;
 }
 
@@ -95,7 +99,6 @@ Reduce::Run()
 {
 	TError err;
 	TReduceInputIterator it2;
-
 	// Process all reducer inputs
 	for (TReduceInputIterator it1 = Input.begin(); it1 != Input.end(); it1 = it2)
 	{
@@ -104,15 +107,16 @@ Reduce::Run()
 
 		err = ReduceFunction(this, key, keyRange.first, keyRange.second);
 		if (err != COk)
-			return (err);
-
-		// for (it2 = keyRange.first;  it2!=keyRange.second;  ++it2)
-		//    Input.erase(it2);
+		{
+			error("ReduceFunction Error");
+			pthread_cancel(pthread_self());
+			exit(1);
+		}
 		Input.erase(keyRange.first, keyRange.second);
 		it2 = keyRange.second;
 	}
 	reduce_averageOccurKey = float(reduce_numKeys) / float(reduce_numOccurences);
-	return (COk);
+	return COk;
 }
 
 // Función para escribir un resulta en el fichero de salida.
